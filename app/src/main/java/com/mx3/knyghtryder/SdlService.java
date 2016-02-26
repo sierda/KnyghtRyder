@@ -7,6 +7,7 @@ import android.util.Log;
 
 import com.smartdevicelink.exception.SdlException;
 import com.smartdevicelink.exception.SdlExceptionCause;
+import com.smartdevicelink.protocol.enums.FunctionID;
 import com.smartdevicelink.proxy.RPCRequest;
 import com.smartdevicelink.proxy.SdlProxyALM;
 import com.smartdevicelink.proxy.callbacks.OnServiceEnded;
@@ -28,6 +29,7 @@ import com.smartdevicelink.proxy.rpc.DialNumberResponse;
 import com.smartdevicelink.proxy.rpc.EndAudioPassThruResponse;
 import com.smartdevicelink.proxy.rpc.GenericResponse;
 import com.smartdevicelink.proxy.rpc.GetDTCsResponse;
+import com.smartdevicelink.proxy.rpc.GetVehicleData;
 import com.smartdevicelink.proxy.rpc.GetVehicleDataResponse;
 import com.smartdevicelink.proxy.rpc.ListFiles;
 import com.smartdevicelink.proxy.rpc.ListFilesResponse;
@@ -50,6 +52,7 @@ import com.smartdevicelink.proxy.rpc.OnTouchEvent;
 import com.smartdevicelink.proxy.rpc.OnVehicleData;
 import com.smartdevicelink.proxy.rpc.PerformAudioPassThruResponse;
 import com.smartdevicelink.proxy.rpc.PerformInteractionResponse;
+import com.smartdevicelink.proxy.rpc.PermissionItem;
 import com.smartdevicelink.proxy.rpc.PutFile;
 import com.smartdevicelink.proxy.rpc.PutFileResponse;
 import com.smartdevicelink.proxy.rpc.ReadDIDResponse;
@@ -88,7 +91,7 @@ public class SdlService extends Service implements IProxyListenerALM{
 
 	private static final String TAG 					= "SDL Service";
 
-	private static final String APP_NAME 				= "Hello Sdl";
+	private static final String APP_NAME 				= "KnyghtRyder";
 	private static final String APP_ID 					= "3895116557";
 	
 	private static final String ICON_FILENAME 			= "hello_sdl_icon.png";
@@ -96,8 +99,8 @@ public class SdlService extends Service implements IProxyListenerALM{
 
 	List<String> remoteFiles;
 	
-	private static final String WELCOME_SHOW 			= "Welcome to HelloSDL";
-	private static final String WELCOME_SPEAK 			= "Welcome to Hello S D L";
+	private static final String WELCOME_SHOW 			= "Welcome to KnyghtRyder";
+	private static final String WELCOME_SPEAK 			= "Welcome to Knight Rider";
 	
 	private static final String TEST_COMMAND_NAME 		= "Test Command";
 	private static final int TEST_COMMAND_ID 			= 1;
@@ -115,7 +118,8 @@ public class SdlService extends Service implements IProxyListenerALM{
 	private boolean firstNonHmiNone = true;
 	private boolean isVehicleDataSubscribed = false;
 	
-	
+	private BackgroundVehicleDataPoller vehicleDataPoller;
+    private Thread vehiclePollerThread;
 	
 	@Override
 	public IBinder onBind(Intent intent) {
@@ -170,6 +174,8 @@ public class SdlService extends Service implements IProxyListenerALM{
 	}
 
 	public void disposeSyncProxy() {
+        killVehicleDataPoller();
+
 		if (proxy != null) {
 			try {
 				proxy.dispose();
@@ -185,6 +191,8 @@ public class SdlService extends Service implements IProxyListenerALM{
 	}
 
 	public void reset() {
+        killVehicleDataPoller();
+
 		if (proxy != null) {
 			try {
 				proxy.resetProxy();
@@ -219,7 +227,7 @@ public class SdlService extends Service implements IProxyListenerALM{
 	 *  Add commands for the app on SDL.
 	 */
 	public void sendCommands(){
-		AddCommand command = new AddCommand();
+		AddCommand command;
 		MenuParams params = new MenuParams();
 		params.setMenuName(TEST_COMMAND_NAME);
 		command = new AddCommand();
@@ -327,14 +335,27 @@ public class SdlService extends Service implements IProxyListenerALM{
 
 	@Override
 	public void onOnHMIStatus(OnHMIStatus notification) {
+		Log.i(TAG, notification.getHmiLevel().toString());
+
 		if(notification.getHmiLevel().equals(HMILevel.HMI_FULL)){			
 			if (notification.getFirstRun()) {
 				// send welcome message if applicable
 				performWelcomeMessage();
 			}
 			// Other HMI (Show, PerformInteraction, etc.) would go here
+
+            //subscribe to vehicle data
+            if(!isVehicleDataSubscribed){ //If we haven't already subscribed we will subscribe now
+                //proxy.subscribevehicledata(gps, speed, rpm, fuelLevel, fuelLevel_State, instantFuelConsumption, externalTemperature, prndl, tirePressure, odometer, beltStatus, bodyInformation, deviceStatus, driverBraking, correlationID);
+                try {
+                    proxy.subscribevehicledata(false, true, true, false, false, false, false, false, false, false, false, false, false, false, autoIncCorrId++);
+                } catch (SdlException e) {
+                    e.printStackTrace();
+                }
+            }
 		}
-		
+
+
 		
 		if(!notification.getHmiLevel().equals(HMILevel.HMI_NONE)
 				&& firstNonHmiNone){
@@ -353,7 +374,7 @@ public class SdlService extends Service implements IProxyListenerALM{
 		
 		
 	}
-	
+
 	/**
 	 * Will show a sample welcome message on screen as well as speak a sample welcome message
 	 */
@@ -476,28 +497,52 @@ public class SdlService extends Service implements IProxyListenerALM{
 					if(!isVehicleDataSubscribed){ //If we haven't already subscribed we will subscribe now
 						//TODO: Add the vehicle data items you want to subscribe to
 						//proxy.subscribevehicledata(gps, speed, rpm, fuelLevel, fuelLevel_State, instantFuelConsumption, externalTemperature, prndl, tirePressure, odometer, beltStatus, bodyInformation, deviceStatus, driverBraking, correlationID);
-						proxy.subscribevehicledata(false, true, rpm, false, false, false, false, false, false, false, false, false, false, false, autoIncCorrId++);
+						try {
+							proxy.subscribevehicledata(false, true, true, false, false, false, false, false, false, false, false, false, false, false, autoIncCorrId++);
+						} catch (SdlException e) {
+							e.printStackTrace();
+						}
 					}
 				}
 			}
-		}
-		*/
+		}*/
+
 	}
 		
 	@Override
 	public void onSubscribeVehicleDataResponse(SubscribeVehicleDataResponse response) {
-		if(response.getSuccess()){
-			Log.i(TAG, "Subscribed to vehicle data");
-			this.isVehicleDataSubscribed = true;
-		}
-	}
-	
+        Log.i(TAG, response.toString());
+        if (response.getSuccess()) {
+            Log.i(TAG, "Subscribed to vehicle data");
+            this.isVehicleDataSubscribed = true;
+            vehicleDataPoller = new BackgroundVehicleDataPoller(proxy);
+            vehiclePollerThread = new Thread(vehicleDataPoller);
+            vehiclePollerThread.start();
+        }
+    }
+
+    public void killVehicleDataPoller()
+    {
+        this.isVehicleDataSubscribed = false;
+
+        if(vehicleDataPoller != null) {
+            vehicleDataPoller.stop();
+        }
+
+        try {
+            if(vehiclePollerThread != null) {
+                vehiclePollerThread.join();
+            }
+        } catch (InterruptedException e) {
+            e.printStackTrace();
+        }
+    }
+
 	@Override
 	public void onOnVehicleData(OnVehicleData notification) {
 		Log.i(TAG, "Vehicle data notification from SDL");
 		//TODO Put your vehicle data code here
 		//ie, notification.getSpeed().
-
 	}
 	
 	/**
@@ -594,12 +639,15 @@ public class SdlService extends Service implements IProxyListenerALM{
 	public void onUnsubscribeVehicleDataResponse(
 			UnsubscribeVehicleDataResponse response) {
 		// TODO Auto-generated method stub
-
-	}
+        Log.i(TAG, "Unsubscribed from vehicle data");
+        killVehicleDataPoller();
+    }
 
 	@Override
 	public void onGetVehicleDataResponse(GetVehicleDataResponse response) {
 		// TODO Auto-generated method stub
+        Log.i(TAG, response.toString());
+		Log.i(TAG, response.getSpeed().toString());
 
 	}
 
@@ -722,7 +770,6 @@ public class SdlService extends Service implements IProxyListenerALM{
 	@Override
 	public void onStreamRPCResponse(StreamRPCResponse response) {
 		// TODO Auto-generated method stub
-
 	}
 
 	@Override
@@ -786,6 +833,38 @@ public class SdlService extends Service implements IProxyListenerALM{
 	@Override
 	public void onGenericResponse(GenericResponse response) {
 		// TODO Auto-generated method stub
+
 	}
 
+}
+
+class BackgroundVehicleDataPoller implements Runnable
+{
+    SdlProxyALM proxy;
+    boolean run;
+    int counter;
+
+    BackgroundVehicleDataPoller(SdlProxyALM proxy)
+    {
+        this.proxy = proxy;
+        run = true;
+        counter = 0;
+    }
+
+    public void run()
+    {
+        try {
+            while(run) {
+                proxy.getvehicledata(false, true, true, false, false, false, false, false, false, false, false, false, false, false, false, counter++);
+                Thread.sleep(500);
+            }
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+    }
+
+    public void stop()
+    {
+        run = false;
+    }
 }
