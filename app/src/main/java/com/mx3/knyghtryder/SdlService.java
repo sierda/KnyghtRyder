@@ -120,7 +120,11 @@ public class SdlService extends Service implements IProxyListenerALM{
 	
 	private BackgroundVehicleDataPoller vehicleDataPoller;
     private Thread vehiclePollerThread;
-	
+
+	//Most recent vehicle data
+	public int vehicleRpm = 0;
+	public double vehicleSpeed = 0.0;
+
 	@Override
 	public IBinder onBind(Intent intent) {
 		return null;
@@ -646,9 +650,9 @@ public class SdlService extends Service implements IProxyListenerALM{
 	@Override
 	public void onGetVehicleDataResponse(GetVehicleDataResponse response) {
 		// TODO Auto-generated method stub
-        Log.i(TAG, response.toString());
 		Log.i(TAG, response.getSpeed().toString());
-
+		vehicleSpeed = response.getSpeed();
+		//vehicleRpm = response.getRpm();
 	}
 
 	@Override

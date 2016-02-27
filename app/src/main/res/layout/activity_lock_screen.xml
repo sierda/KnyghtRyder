@@ -7,7 +7,7 @@
         android:layout_width="fill_parent"
         android:layout_height="wrap_content"
         android:layout_gravity="center"
-        android:contentDescription="@string/hello_world"
+        android:contentDescription="@string/app_name"
         android:layout_margin="@dimen/activity_horizontal_margin"
         android:src="@drawable/sdl"/>
 
@@ -17,6 +17,6 @@
         android:gravity="center"
         android:textSize="16sp"
         android:layout_margin="@dimen/activity_horizontal_margin"
-        android:text="@string/hello_world"/>
+        android:text="@string/app_name"/>
 
 </LinearLayout>
