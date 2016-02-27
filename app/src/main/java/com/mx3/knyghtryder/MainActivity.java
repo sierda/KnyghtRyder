@@ -1,10 +1,12 @@
 package com.mx3.knyghtryder;
 
+import android.app.Activity;
 import android.content.Context;
 import android.content.Intent;
 import android.net.Uri;
 import android.support.v7.app.ActionBarActivity;
 import android.os.Bundle;
+import android.util.Log;
 import android.view.Menu;
 import android.view.MenuItem;
 import android.widget.TextView;
@@ -14,20 +16,18 @@ import com.google.android.gms.appindexing.AppIndex;
 import com.google.android.gms.common.api.GoogleApiClient;
 import com.smartdevicelink.proxy.rpc.GetVehicleDataResponse;
 
-public class MainActivity extends ActionBarActivity implements VehicleInfoDisplay {
+public class MainActivity extends ActionBarActivity  {
 
     public TextView rpmValue;
+	public TextView speedValue;
+
+	private static Thread backgroundUpdater;
 
 	/**
 	 * ATTENTION: This was auto-generated to implement the App Indexing API.
 	 * See https://g.co/AppIndexing/AndroidStudio for more information.
 	 */
 	private GoogleApiClient client;
-
-    public void updateVehicleInfo(GetVehicleDataResponse info)
-    {
-
-    }
 
 	@Override
 	protected void onCreate(Bundle savedInstanceState) {
@@ -37,18 +37,22 @@ public class MainActivity extends ActionBarActivity implements VehicleInfoDispla
 		// See https://g.co/AppIndexing/AndroidStudio for more information.
 		client = new GoogleApiClient.Builder(this).addApi(AppIndex.API).build();
 
-        //SdlServiceConnection conn = new SdlServiceConnection(this);
-        //Intent i = new Intent(this, SdlService.class);
-        //getApplicationContext().bindService(i, conn, Context.BIND_AUTO_CREATE);
+		rpmValue = (TextView)findViewById(R.id.rpmValue);
+		rpmValue.setText("0");
+
+		speedValue = (TextView)findViewById(R.id.speedValue);
+		speedValue.setText("0");
+
+		if(backgroundUpdater == null) {
+			backgroundUpdater = new Thread(new VehicleDataUpdater(this));
+			backgroundUpdater.start();
+		}
 	}
 
 	@Override
 	public boolean onCreateOptionsMenu(Menu menu) {
 		// Inflate the menu; this adds items to the action bar if it is present.
 		getMenuInflater().inflate(R.menu.main, menu);
-
-        rpmValue = (TextView)findViewById(R.id.rpmValue);
-        rpmValue.setText("0");
 		return true;
 	}
 
@@ -102,5 +106,58 @@ public class MainActivity extends ActionBarActivity implements VehicleInfoDispla
 		);
 		AppIndex.AppIndexApi.end(client, viewAction);
 		client.disconnect();
+	}
+
+	class VehicleDataUpdater implements  Runnable
+	{
+		private SdlService sdlService;
+		private MainActivity mainActivity;
+		public boolean run;
+
+		public VehicleDataUpdater(MainActivity a)
+		{
+			mainActivity = a;
+			run = true;
+		}
+
+		public boolean updateService()
+		{
+			if(sdlService == null)
+			{
+				sdlService = SdlService.getInstance();
+			}
+
+			return (sdlService != null);
+		}
+
+		public void run()
+		{
+			try {
+				while(run) {
+					Thread.sleep(500);
+					if (!updateService()) {
+						Log.i("PRINT", "updateService = false");
+						continue;
+					}
+
+					MainActivity.this.runOnUiThread(new Runnable() {
+						public void run() {
+							updateLabels();
+						}
+					});
+				}
+			} catch (InterruptedException e) {
+				Log.i("ERROR", e.toString());
+			}
+		}
+
+		private void updateLabels()
+		{
+			String speed = String.valueOf(SdlService.getInstance().vehicleRpm);
+			mainActivity.rpmValue.setText(speed);
+
+			String rpm = String.valueOf(SdlService.getInstance().vehicleSpeed);
+			mainActivity.speedValue.setText(rpm);
+		}
 	}
 }

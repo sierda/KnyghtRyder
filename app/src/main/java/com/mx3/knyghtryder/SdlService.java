@@ -116,7 +116,7 @@ public class SdlService extends Service implements IProxyListenerALM{
 	private boolean lockscreenDisplayed = false;
 
 	private boolean firstNonHmiNone = true;
-	private boolean isVehicleDataSubscribed = false;
+	public boolean isVehicleDataSubscribed = false;
 	
 	private BackgroundVehicleDataPoller vehicleDataPoller;
     private Thread vehiclePollerThread;
@@ -650,9 +650,12 @@ public class SdlService extends Service implements IProxyListenerALM{
 	@Override
 	public void onGetVehicleDataResponse(GetVehicleDataResponse response) {
 		// TODO Auto-generated method stub
-		Log.i(TAG, response.getSpeed().toString());
-		vehicleSpeed = response.getSpeed();
-		//vehicleRpm = response.getRpm();
+		if(response.getSpeed() != null) {
+			vehicleSpeed = response.getSpeed();
+		}
+		if(response.getRpm() != null) {
+			vehicleRpm = response.getRpm();
+		}
 	}
 
 	@Override

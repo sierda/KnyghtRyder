@@ -21,6 +21,24 @@
         android:id="@+id/rpmValue"
         android:layout_alignParentTop="true"
         android:layout_toEndOf="@+id/rpmLabel"
-        android:layout_marginStart="12dp" />
+        android:layout_marginStart="12dp"
+        android:text="rpm" />
+
+    <TextView
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="Speed"
+        android:id="@+id/textView"
+        android:layout_below="@+id/rpmLabel"
+        android:layout_alignParentStart="true"
+        android:textStyle="bold" />
+
+    <TextView
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="speed"
+        android:id="@+id/speedValue"
+        android:layout_alignTop="@+id/textView"
+        android:layout_alignStart="@+id/rpmValue" />
 
 </RelativeLayout>
