@@ -1,11 +1,8 @@
 package com.mx3.knyghtryder;
 
-import android.app.Activity;
-import android.content.Context;
-import android.content.Intent;
 import android.net.Uri;
-import android.support.v7.app.ActionBarActivity;
 import android.os.Bundle;
+import android.support.v7.app.ActionBarActivity;
 import android.util.Log;
 import android.view.Menu;
 import android.view.MenuItem;
@@ -14,12 +11,15 @@ import android.widget.TextView;
 import com.google.android.gms.appindexing.Action;
 import com.google.android.gms.appindexing.AppIndex;
 import com.google.android.gms.common.api.GoogleApiClient;
-import com.smartdevicelink.proxy.rpc.GetVehicleDataResponse;
+
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.HashMap;
 
 public class MainActivity extends ActionBarActivity  {
 
-    public TextView rpmValue;
-	public TextView speedValue;
+	private HashMap<String, TextView> vehicleDataLabels;
+	private ArrayList<String> vehicleDataKeys;
 
 	private static Thread backgroundUpdater;
 
@@ -37,11 +37,15 @@ public class MainActivity extends ActionBarActivity  {
 		// See https://g.co/AppIndexing/AndroidStudio for more information.
 		client = new GoogleApiClient.Builder(this).addApi(AppIndex.API).build();
 
-		rpmValue = (TextView)findViewById(R.id.rpmValue);
-		rpmValue.setText("0");
+		vehicleDataLabels = new HashMap<>();
 
-		speedValue = (TextView)findViewById(R.id.speedValue);
-		speedValue.setText("0");
+		vehicleDataLabels.put("rpm", (TextView) findViewById(R.id.rpmValue));
+		vehicleDataLabels.put("speed", (TextView)findViewById(R.id.speedValue));
+
+		vehicleDataKeys = new ArrayList<String>(Arrays.asList(new String[]{
+			"rpm",
+			"speed"
+		}));
 
 		if(backgroundUpdater == null) {
 			backgroundUpdater = new Thread(new VehicleDataUpdater(this));
@@ -136,7 +140,6 @@ public class MainActivity extends ActionBarActivity  {
 				while(run) {
 					Thread.sleep(500);
 					if (!updateService()) {
-						Log.i("PRINT", "updateService = false");
 						continue;
 					}
 
@@ -146,18 +149,23 @@ public class MainActivity extends ActionBarActivity  {
 						}
 					});
 				}
-			} catch (InterruptedException e) {
-				Log.i("ERROR", e.toString());
-			}
+			} catch (InterruptedException e) {}
 		}
 
 		private void updateLabels()
 		{
-			String speed = String.valueOf(SdlService.getInstance().vehicleRpm);
-			mainActivity.rpmValue.setText(speed);
+			try {
+				for(String key : vehicleDataKeys)
+				{
+					updateLabel(key);
+				}
+			}
+			catch(Exception e){}
+		}
 
-			String rpm = String.valueOf(SdlService.getInstance().vehicleSpeed);
-			mainActivity.speedValue.setText(rpm);
+		private void updateLabel(String key)
+		{
+			vehicleDataLabels.get(key).setText(SdlService.getInstance().vehicleData.get(key));
 		}
 	}
 }

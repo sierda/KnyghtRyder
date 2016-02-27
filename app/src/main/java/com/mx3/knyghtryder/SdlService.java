@@ -7,7 +7,6 @@ import android.util.Log;
 
 import com.smartdevicelink.exception.SdlException;
 import com.smartdevicelink.exception.SdlExceptionCause;
-import com.smartdevicelink.protocol.enums.FunctionID;
 import com.smartdevicelink.proxy.RPCRequest;
 import com.smartdevicelink.proxy.SdlProxyALM;
 import com.smartdevicelink.proxy.callbacks.OnServiceEnded;
@@ -29,7 +28,6 @@ import com.smartdevicelink.proxy.rpc.DialNumberResponse;
 import com.smartdevicelink.proxy.rpc.EndAudioPassThruResponse;
 import com.smartdevicelink.proxy.rpc.GenericResponse;
 import com.smartdevicelink.proxy.rpc.GetDTCsResponse;
-import com.smartdevicelink.proxy.rpc.GetVehicleData;
 import com.smartdevicelink.proxy.rpc.GetVehicleDataResponse;
 import com.smartdevicelink.proxy.rpc.ListFiles;
 import com.smartdevicelink.proxy.rpc.ListFilesResponse;
@@ -52,7 +50,6 @@ import com.smartdevicelink.proxy.rpc.OnTouchEvent;
 import com.smartdevicelink.proxy.rpc.OnVehicleData;
 import com.smartdevicelink.proxy.rpc.PerformAudioPassThruResponse;
 import com.smartdevicelink.proxy.rpc.PerformInteractionResponse;
-import com.smartdevicelink.proxy.rpc.PermissionItem;
 import com.smartdevicelink.proxy.rpc.PutFile;
 import com.smartdevicelink.proxy.rpc.PutFileResponse;
 import com.smartdevicelink.proxy.rpc.ReadDIDResponse;
@@ -85,6 +82,7 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.HashMap;
 import java.util.List;
 
 public class SdlService extends Service implements IProxyListenerALM{
@@ -122,8 +120,7 @@ public class SdlService extends Service implements IProxyListenerALM{
     private Thread vehiclePollerThread;
 
 	//Most recent vehicle data
-	public int vehicleRpm = 0;
-	public double vehicleSpeed = 0.0;
+	public HashMap<String, String> vehicleData = new HashMap<>();
 
 	@Override
 	public IBinder onBind(Intent intent) {
@@ -135,6 +132,9 @@ public class SdlService extends Service implements IProxyListenerALM{
 		super.onCreate();
 		instance = this;
 		remoteFiles = new ArrayList<String>();
+
+		vehicleData.put("rpm", "nil");
+		vehicleData.put("speed", "nil");
 	}
 
 	@Override
@@ -649,12 +649,11 @@ public class SdlService extends Service implements IProxyListenerALM{
 
 	@Override
 	public void onGetVehicleDataResponse(GetVehicleDataResponse response) {
-		// TODO Auto-generated method stub
 		if(response.getSpeed() != null) {
-			vehicleSpeed = response.getSpeed();
+			vehicleData.put("speed", String.valueOf(response.getSpeed()));
 		}
 		if(response.getRpm() != null) {
-			vehicleRpm = response.getRpm();
+			vehicleData.put("rpm", String.valueOf(response.getRpm()));
 		}
 	}
 
